@@ -1,144 +1,81 @@
-import sys
-from datetime import datetime
-
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QTextEdit,
-    QLineEdit,
-    QPushButton,
-)
-
+import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
 from brain import think
-from commands import execute
-from voice import speak
 
 
-class JarvisWindow(QWidget):
+class JarvisGUI:
 
     def __init__(self):
-        super().__init__()
 
-        self.setWindowTitle("JARVIS OS v0.5")
-        self.resize(800, 600)
+        self.window = tk.Tk()
+        self.window.title("JARVIS OS 2.0")
+        self.window.geometry("900x650")
+        self.window.configure(bg="#111111")
 
-        self.setStyleSheet("""
-            QWidget{
-                background:#111827;
-                color:white;
-                font-size:12pt;
-            }
+        # Chat window
+        self.chat = ScrolledText(
+            self.window,
+            bg="#1e1e1e",
+            fg="#00ff99",
+            font=("Consolas", 11),
+            wrap=tk.WORD
+        )
 
-            QTextEdit{
-                background:#1f2937;
-                border:2px solid #3b82f6;
-                border-radius:8px;
-            }
+        self.chat.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.chat.insert(tk.END, "JARVIS OS 2.0 ONLINE\n")
+        self.chat.insert(tk.END, "Type 'help' to see built-in commands.\n\n")
+        self.chat.config(state=tk.DISABLED)
 
-            QLineEdit{
-                background:#1f2937;
-                border:2px solid #3b82f6;
-                border-radius:8px;
-                padding:8px;
-            }
+        # Bottom frame
+        bottom = tk.Frame(self.window, bg="#111111")
+        bottom.pack(fill=tk.X, padx=10, pady=10)
 
-            QPushButton{
-                background:#2563eb;
-                border-radius:8px;
-                padding:8px;
-                color:white;
-            }
+        self.entry = tk.Entry(
+            bottom,
+            font=("Consolas", 12)
+        )
 
-            QPushButton:hover{
-                background:#3b82f6;
-            }
-        """)
+        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.entry.bind("<Return>", self.send)
 
-        layout = QVBoxLayout()
+        send_btn = tk.Button(
+            bottom,
+            text="Send",
+            command=self.send
+        )
 
-        top = QHBoxLayout()
+        send_btn.pack(side=tk.LEFT, padx=5)
 
-        self.status = QLabel("🟢 ONLINE")
+    def write(self, text):
 
-        self.clock = QLabel()
+        self.chat.config(state=tk.NORMAL)
+        self.chat.insert(tk.END, text + "\n")
+        self.chat.see(tk.END)
+        self.chat.config(state=tk.DISABLED)
 
-        top.addWidget(self.status)
-        top.addStretch()
-        top.addWidget(self.clock)
+    def send(self, event=None):
 
-        layout.addLayout(top)
+        command = self.entry.get().strip()
 
-        self.chat = QTextEdit()
-        self.chat.setReadOnly(True)
-
-        layout.addWidget(self.chat)
-
-        bottom = QHBoxLayout()
-
-        self.command = QLineEdit()
-        self.command.setPlaceholderText("Enter a command...")
-
-        self.button = QPushButton("Send")
-
-        bottom.addWidget(self.command)
-        bottom.addWidget(self.button)
-
-        layout.addLayout(bottom)
-
-        self.setLayout(layout)
-
-        self.chat.append("JARVIS: Welcome to JARVIS OS.")
-        self.chat.append("JARVIS: All systems online.\n")
-
-        self.button.clicked.connect(self.process_command)
-        self.command.returnPressed.connect(self.process_command)
-
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_clock)
-        self.timer.start(1000)
-
-        self.update_clock()
-
-    def update_clock(self):
-        now = datetime.now()
-        self.clock.setText(now.strftime("%H:%M:%S"))
-
-    def process_command(self):
-
-        command = self.command.text().strip().lower()
-
-        if not command:
+        if command == "":
             return
 
-        self.chat.append(f"You: {command}")
+        self.write(f"You: {command}")
 
-        self.command.clear()
+        self.entry.delete(0, tk.END)
 
-        if command == "exit":
-            speak("Goodbye.")
-            self.close()
-            return
-
-        if execute(command):
-            response = f"Opening {command}..."
-            self.chat.append(f"JARVIS: {response}")
-            speak(response)
+        if command.lower() == "exit":
+            self.window.destroy()
             return
 
         response = think(command)
 
-        self.chat.append(f"JARVIS: {response}")
+        if response:
+            self.write(f"JARVIS: {response}")
 
-        speak(response)
+    def run(self):
+        self.window.mainloop()
 
 
-app = QApplication(sys.argv)
-
-window = JarvisWindow()
-window.show()
-
-sys.exit(app.exec())
+if __name__ == "__main__":
+    JarvisGUI().run()
