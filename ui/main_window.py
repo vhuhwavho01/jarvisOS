@@ -2,11 +2,14 @@ import customtkinter as ctk
 import threading
 
 from ui.theme import *
+from ui.sidebar import SideBar
 from ui.status_bar import StatusBar
 from ui.chat_panel import ChatPanel
 from ui.toolbar import ToolBar
 
-from core.ai import ask_ai, clear_memory
+from core.brain import Brain
+from core.ai import clear_memory
+from core.voice import speak, listen
 
 
 class MainWindow(ctk.CTk):
@@ -14,17 +17,47 @@ class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("JARVIS OS 2.3")
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.title("JARVIS OS v3.1")
+        self.geometry("1400x850")
+        self.minsize(1200, 700)
+
         self.configure(fg_color=BACKGROUND)
+
+        self.brain = Brain()
 
         self.build_ui()
 
+    # ==========================================
+    # BUILD UI
+    # ==========================================
+
     def build_ui(self):
 
-        # ===== Title =====
-        title = ctk.CTkLabel(
+        # Main container
+        self.main_frame = ctk.CTkFrame(
             self,
+            fg_color=BACKGROUND
+        )
+        self.main_frame.pack(fill="both", expand=True)
+
+        # Sidebar
+        self.sidebar = SideBar(self.main_frame)
+        self.sidebar.pack(side="left", fill="y")
+
+        # Right side
+        self.content = ctk.CTkFrame(
+            self.main_frame,
+            fg_color=BACKGROUND
+        )
+        self.content.pack(
+            side="left",
+            fill="both",
+            expand=True
+        )
+
+        # Header
+        title = ctk.CTkLabel(
+            self.content,
             text="JARVIS OS",
             font=TITLE_FONT,
             text_color=ACCENT
@@ -32,29 +65,31 @@ class MainWindow(ctk.CTk):
         title.pack(pady=(20, 5))
 
         subtitle = ctk.CTkLabel(
-            self,
+            self.content,
             text="Artificial Intelligence Command Center",
             font=BODY_FONT,
             text_color=TEXT_SECONDARY
         )
         subtitle.pack(pady=(0, 10))
 
-        # ===== Status Bar =====
-        self.status_bar = StatusBar(self)
+        # Status bar
+        self.status = StatusBar(self.content)
 
-        # ===== Chat Panel =====
-        self.chat_panel = ChatPanel(self)
+        # Chat panel
+        self.chat_panel = ChatPanel(self.content)
 
-        # ===== Toolbar =====
+        # Toolbar
         self.toolbar = ToolBar(
-            self,
+            self.content,
             send_callback=self.send_message,
-            clear_callback=self.clear_chat
+            clear_callback=self.clear_chat,
+            mic_callback=self.start_voice
         )
 
-    # ===============================
+    # ==========================================
     # SEND MESSAGE
-    # ===============================
+    # ==========================================
+
     def send_message(self):
 
         message = self.toolbar.get_message().strip()
@@ -66,42 +101,85 @@ class MainWindow(ctk.CTk):
 
         self.toolbar.clear_entry()
 
-        self.chat_panel.write("🤖 JARVIS is thinking...")
-
         threading.Thread(
-            target=self.process_ai,
+            target=self.process_message,
             args=(message,),
             daemon=True
         ).start()
 
-    # ===============================
-    # AI THREAD
-    # ===============================
-    def process_ai(self, message):
+    # ==========================================
+    # PROCESS MESSAGE
+    # ==========================================
 
-        reply = ask_ai(message)
+    def process_message(self, message):
 
-        self.after(0, lambda: self.show_reply(reply))
+        self.after(
+            0,
+            lambda: self.chat_panel.write("🤖 JARVIS is thinking...")
+        )
 
-    # ===============================
-    # DISPLAY AI RESPONSE
-    # ===============================
-    def show_reply(self, reply):
+        reply = self.brain.process(message)
 
-        # Remove the "thinking..." line
-        try:
-            content = self.chat_panel.chat.get("1.0", "end").splitlines()
+        self.after(
+            0,
+            lambda: self.display_reply(reply)
+        )
 
-            if content and "thinking" in content[-2].lower():
-                self.chat_panel.chat.delete("end-2l", "end-1l")
-        except:
-            pass
+    # ==========================================
+    # DISPLAY REPLY
+    # ==========================================
+
+    def display_reply(self, reply):
 
         self.chat_panel.write(f"🤖 JARVIS: {reply}")
 
-    # ===============================
+        speak(reply)
+
+    # ==========================================
+    # VOICE INPUT
+    # ==========================================
+
+    def start_voice(self):
+
+        threading.Thread(
+            target=self.voice_thread,
+            daemon=True
+        ).start()
+
+    def voice_thread(self):
+
+        self.after(
+            0,
+            lambda: self.chat_panel.write("🎤 Listening...")
+        )
+
+        try:
+
+            text = listen()
+
+            if text:
+
+                self.after(
+                    0,
+                    lambda: self.toolbar.set_message(text)
+                )
+
+                self.after(
+                    100,
+                    self.send_message
+                )
+
+        except Exception as e:
+
+            self.after(
+                0,
+                lambda: self.chat_panel.write(f"❌ Voice Error: {e}")
+            )
+
+    # ==========================================
     # CLEAR CHAT
-    # ===============================
+    # ==========================================
+
     def clear_chat(self):
 
         self.chat_panel.clear()

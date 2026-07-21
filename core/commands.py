@@ -1,42 +1,42 @@
+import os
+import subprocess
 import webbrowser
-import datetime
 
 
 def execute(command):
 
-    command = command.lower()
+    cmd = command.lower()
 
-    if command == "time":
-        now = datetime.datetime.now()
-        print(f"\nCurrent time: {now.strftime('%H:%M:%S')}")
-        return True
+    # ==========================
+    # Chrome
+    # ==========================
 
-    elif command == "date":
-        today = datetime.datetime.now()
-        print(f"\nToday's date: {today.strftime('%d %B %Y')}")
-        return True
+    if "open chrome" in cmd:
+        os.system("start chrome")
+        return "Opening Google Chrome."
 
-    elif command == "open youtube":
-        print("\nOpening YouTube...")
-        webbrowser.open("https://www.youtube.com")
-        return True
+    # ==========================
+    # Notepad
+    # ==========================
 
-    elif command == "open google":
-        print("\nOpening Google...")
-        webbrowser.open("https://www.google.com")
-        return True
+    if "open notepad" in cmd:
+        subprocess.Popen("notepad")
+        return "Opening Notepad."
 
-    elif command == "help":
+    # ==========================
+    # Calculator
+    # ==========================
 
-        print("""
-Available Commands
-------------------
-time
-date
-open youtube
-open google
-help
-""")
-        return True
+    if "open calculator" in cmd:
+        subprocess.Popen("calc")
+        return "Opening Calculator."
 
-    return False
+    # ==========================
+    # TradingView
+    # ==========================
+
+    if "open tradingview" in cmd:
+        webbrowser.open("https://www.tradingview.com")
+        return "Opening TradingView."
+
+    return None
