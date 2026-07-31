@@ -1,189 +1,194 @@
 import customtkinter as ctk
-import threading
 
-from ui.theme import *
-from ui.sidebar import SideBar
-from ui.status_bar import StatusBar
-from ui.chat_panel import ChatPanel
-from ui.toolbar import ToolBar
-
-from core.brain import Brain
-from core.ai import clear_memory
-from core.voice import speak, listen
+from ui.dashboard_page import DashboardPage
+from ui.trading_page import TradingPage
+from ui.performance_page import PerformancePage
+from ui.optimizer_page import OptimizerPage
+from ui.settings_page import SettingsPage
 
 
 class MainWindow(ctk.CTk):
 
     def __init__(self):
+
         super().__init__()
 
-        self.title("JARVIS OS v3.1")
-        self.geometry("1400x850")
-        self.minsize(1200, 700)
+        self.title("JARVIS AI Trading Terminal")
 
-        self.configure(fg_color=BACKGROUND)
+        self.geometry("1700x950")
 
-        self.brain = Brain()
+        self.minsize(1500, 850)
 
-        self.build_ui()
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-    # ==========================================
-    # BUILD UI
-    # ==========================================
+        self.create_sidebar()
 
-    def build_ui(self):
+        self.create_pages()
 
-        # Main container
-        self.main_frame = ctk.CTkFrame(
+    # ======================================================
+
+    def create_sidebar(self):
+
+        self.sidebar = ctk.CTkFrame(
+
             self,
-            fg_color=BACKGROUND
-        )
-        self.main_frame.pack(fill="both", expand=True)
 
-        # Sidebar
-        self.sidebar = SideBar(self.main_frame)
-        self.sidebar.pack(side="left", fill="y")
+            width=220,
 
-        # Right side
-        self.content = ctk.CTkFrame(
-            self.main_frame,
-            fg_color=BACKGROUND
-        )
-        self.content.pack(
-            side="left",
-            fill="both",
-            expand=True
+            corner_radius=0
+
         )
 
-        # Header
+        self.sidebar.grid(
+
+            row=0,
+
+            column=0,
+
+            sticky="ns"
+
+        )
+
+        self.sidebar.grid_propagate(False)
+
         title = ctk.CTkLabel(
-            self.content,
-            text="JARVIS OS",
-            font=TITLE_FONT,
-            text_color=ACCENT
+
+            self.sidebar,
+
+            text="JARVIS",
+
+            font=("Segoe UI", 28, "bold")
+
         )
-        title.pack(pady=(20, 5))
+
+        title.pack(
+
+            pady=(30, 5)
+
+        )
 
         subtitle = ctk.CTkLabel(
-            self.content,
-            text="Artificial Intelligence Command Center",
-            font=BODY_FONT,
-            text_color=TEXT_SECONDARY
-        )
-        subtitle.pack(pady=(0, 10))
 
-        # Status bar
-        self.status = StatusBar(self.content)
+            self.sidebar,
 
-        # Chat panel
-        self.chat_panel = ChatPanel(self.content)
+            text="AI Trading Terminal"
 
-        # Toolbar
-        self.toolbar = ToolBar(
-            self.content,
-            send_callback=self.send_message,
-            clear_callback=self.clear_chat,
-            mic_callback=self.start_voice
         )
 
-    # ==========================================
-    # SEND MESSAGE
-    # ==========================================
+        subtitle.pack(
 
-    def send_message(self):
+            pady=(0, 30)
 
-        message = self.toolbar.get_message().strip()
-
-        if not message:
-            return
-
-        self.chat_panel.write(f"🧑 You: {message}")
-
-        self.toolbar.clear_entry()
-
-        threading.Thread(
-            target=self.process_message,
-            args=(message,),
-            daemon=True
-        ).start()
-
-    # ==========================================
-    # PROCESS MESSAGE
-    # ==========================================
-
-    def process_message(self, message):
-
-        self.after(
-            0,
-            lambda: self.chat_panel.write("🤖 JARVIS is thinking...")
         )
 
-        reply = self.brain.process(message)
+        buttons = [
 
-        self.after(
-            0,
-            lambda: self.display_reply(reply)
-        )
+            ("Dashboard", self.show_dashboard),
 
-    # ==========================================
-    # DISPLAY REPLY
-    # ==========================================
+            ("Trading", self.show_trading),
 
-    def display_reply(self, reply):
+            ("Performance", self.show_performance),
 
-        self.chat_panel.write(f"🤖 JARVIS: {reply}")
+            ("Optimizer", self.show_optimizer),
 
-        speak(reply)
+            ("Settings", self.show_settings)
 
-    # ==========================================
-    # VOICE INPUT
-    # ==========================================
+        ]
 
-    def start_voice(self):
+        for text, command in buttons:
 
-        threading.Thread(
-            target=self.voice_thread,
-            daemon=True
-        ).start()
+            ctk.CTkButton(
 
-    def voice_thread(self):
+                self.sidebar,
 
-        self.after(
-            0,
-            lambda: self.chat_panel.write("🎤 Listening...")
-        )
+                text=text,
 
-        try:
+                command=command
 
-            text = listen()
+            ).pack(
 
-            if text:
+                fill="x",
 
-                self.after(
-                    0,
-                    lambda: self.toolbar.set_message(text)
-                )
+                padx=15,
 
-                self.after(
-                    100,
-                    self.send_message
-                )
+                pady=5
 
-        except Exception as e:
-
-            self.after(
-                0,
-                lambda: self.chat_panel.write(f"❌ Voice Error: {e}")
             )
 
-    # ==========================================
-    # CLEAR CHAT
-    # ==========================================
+    # ======================================================
 
-    def clear_chat(self):
+    def create_pages(self):
 
-        self.chat_panel.clear()
+        self.container = ctk.CTkFrame(
 
-        clear_memory()
+            self,
 
-        self.chat_panel.write("🤖 Conversation cleared.")
+            fg_color="transparent"
+
+        )
+
+        self.container.grid(
+
+            row=0,
+
+            column=1,
+
+            sticky="nsew"
+
+        )
+
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
+
+        self.dashboard = DashboardPage(self.container)
+        self.trading = TradingPage(self.container)
+        self.performance = PerformancePage(self.container)
+        self.optimizer = OptimizerPage(self.container)
+        self.settings = SettingsPage(self.container)
+
+        self.pages = [
+
+            self.dashboard,
+            self.trading,
+            self.performance,
+            self.optimizer,
+            self.settings
+
+        ]
+
+        for page in self.pages:
+
+            page.grid(
+
+                row=0,
+
+                column=0,
+
+                sticky="nsew"
+
+            )
+
+        self.dashboard.tkraise()
+
+    # ======================================================
+
+    def show_dashboard(self):
+
+        self.dashboard.tkraise()
+
+    def show_trading(self):
+
+        self.trading.tkraise()
+
+    def show_performance(self):
+
+        self.performance.tkraise()
+
+    def show_optimizer(self):
+
+        self.optimizer.tkraise()
+
+    def show_settings(self):
+
+        self.settings.tkraise()

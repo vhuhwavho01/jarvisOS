@@ -4,7 +4,7 @@ from ui.theme import *
 
 class SideBar(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, page_callback):
 
         super().__init__(
             master,
@@ -24,22 +24,27 @@ class SideBar(ctk.CTkFrame):
 
         title.pack(pady=(20, 30))
 
-        buttons = [
-            "🏠 Home",
-            "💬 Chat",
-            "🎤 Voice",
-            "🧠 Memory",
-            "📈 Trading",
-            "⚙️ Settings"
+        pages = [
+            ("🏠 Home", "home"),
+            ("💬 Chat", "chat"),
+            ("🎤 Voice", "voice"),
+            ("🧠 Memory", "memory"),
+            ("📈 Trading", "trading"),
+            ("⚙️ Settings", "settings"),
         ]
 
-        for name in buttons:
+        self.buttons = {}
 
-            button = ctk.CTkButton(
+        for text, page in pages:
+
+            btn = ctk.CTkButton(
                 self,
-                text=name,
+                text=text,
                 width=150,
-                height=40
+                height=40,
+                command=lambda p=page: page_callback(p)
             )
 
-            button.pack(pady=6)
+            btn.pack(pady=6)
+
+            self.buttons[page] = btn

@@ -1,36 +1,46 @@
 import customtkinter as ctk
 
 from ui.pages.home_page import HomePage
+from ui.pages.chat_page import ChatPage
+from ui.pages.voice_page import VoicePage
+from ui.pages.memory_page import MemoryPage
+from ui.pages.trading_page import TradingPage
+from ui.pages.settings_page import SettingsPage
 
 
-class PageManager(ctk.CTkFrame):
+class PageManager:
 
-    def __init__(self, master):
-        super().__init__(master, fg_color="transparent")
+    def __init__(self, parent):
 
-        self.pack(fill="both", expand=True)
+        self.parent = parent
 
-        self.current_page = None
+        self.pages = {
 
-        self.show_home()
+            "home": HomePage(parent),
 
-    # ===================================
-    # Remove Current Page
-    # ===================================
+            "chat": ChatPage(parent),
 
-    def clear_page(self):
+            "voice": VoicePage(parent),
 
-        if self.current_page is not None:
-            self.current_page.destroy()
+            "memory": MemoryPage(parent),
 
-    # ===================================
-    # HOME
-    # ===================================
+            "trading": TradingPage(parent),
 
-    def show_home(self):
+            "settings": SettingsPage(parent)
 
-        self.clear_page()
+        }
 
-        self.current_page = HomePage(self)
+        for page in self.pages.values():
 
-        self.current_page.pack(fill="both", expand=True)
+            page.place(
+                relx=0,
+                rely=0,
+                relwidth=1,
+                relheight=1
+            )
+
+        self.show("home")
+
+    def show(self, name):
+
+        self.pages[name].tkraise()
