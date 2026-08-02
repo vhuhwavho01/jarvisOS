@@ -260,16 +260,15 @@ class TradeJournal:
             symbol = req.get("symbol", "UNKNOWN")
             raw_type = req.get("type")
             side = "UNKNOWN"
-            try:
-                if raw_type == mt5.ORDER_TYPE_BUY:
-                    side = "BUY"
-                elif raw_type == mt5.ORDER_TYPE_SELL:
-                    side = "SELL"
-                else:
-                    # fallback use comment/action
-                    side = req.get("comment", "") or str(req.get("action", "DEAL"))
-            except Exception:
-                side = "UNKNOWN"
+
+            # determine side (clean, no stray diff markers)
+            if raw_type == mt5.ORDER_TYPE_BUY:
+                side = "BUY"
+            elif raw_type == mt5.ORDER_TYPE_SELL:
+                side = "SELL"
+            else:
+                # fallback use comment/action
+                side = req.get("comment", "") or str(req.get("action", "DEAL"))
 
             volume = float(req.get("volume", 0.0) or 0.0)
             price = res.get("price") if isinstance(res, dict) else None
