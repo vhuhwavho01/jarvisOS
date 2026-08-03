@@ -3,9 +3,12 @@ import MetaTrader5 as mt5
 import threading
 import time
 import traceback
+import logging
 
 from ui.main_window import MainWindow
 from core.jarvis_engine import JarvisEngine
+
+LOG = logging.getLogger("jarvis.app")
 
 
 class JarvisApp:
@@ -15,8 +18,19 @@ class JarvisApp:
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
-        if not mt5.initialize():
-            raise Exception("Failed to initialize MetaTrader 5.")
+        # Try to initialize MT5 but do not abort startup if it fails
+        self.mt5_initialized = False
+        try:
+            ok = mt5.initialize()
+        except Exception as e:
+            ok = False
+            LOG.warning("mt5.initialize() raised: %s", e, exc_info=True)
+
+        if not ok:
+            LOG.warning("Failed to initialize MetaTrader 5. Running in offline/degraded mode.")
+        else:
+            self.mt5_initialized = True
+            LOG.info("MetaTrader5 initialized successfully")
 
         self.engine = JarvisEngine()
 
@@ -26,7 +40,8 @@ class JarvisApp:
 
         self.thread = threading.Thread(
             target=self.live_update_loop,
-            daemon=True
+            daemon=True,
+            name="LiveUpdate",
         )
 
         self.thread.start()
@@ -41,36 +56,48 @@ class JarvisApp:
 
                 result = self.engine.analyze()
 
+                LOG.debug("Analysis completed: %s", repr(result))
+
                 if result is None:
                     time.sleep(2)
                     continue
 
-                if hasattr(self.window, "dashboard"):
+                # Schedule dashboard update on the UI thread
+                try:
+                    if hasattr(self.window, "dashboard"):
+                        # update_dashboard will schedule an after() callback internally
+                        self.window.dashboard.update_dashboard(result)
+                        LOG.info("Dashboard updated: signal=%s confidence=%s", result.get("signal"), result.get("confidence"))
+                except Exception:
+                    LOG.exception("Failed to update dashboard")
 
-                    self.window.dashboard.update_dashboard(result)
+                # Trading page update
+                try:
+                    if hasattr(self.window, "trading"):
+                        self.window.trading.update_signal(result)
+                except Exception:
+                    LOG.exception("Failed to update trading page")
 
-                if hasattr(self.window, "trading"):
+                # Positions (only when mt5 initialized)
+                positions = []
+                if self.mt5_initialized:
+                    try:
+                        positions = mt5.positions_get()
+                        if positions is None:
+                            positions = []
+                    except Exception:
+                        LOG.exception("mt5.positions_get() failed")
+                        positions = []
 
-                    self.window.trading.update_signal(result)
-
-                positions = mt5.positions_get()
-
-                if positions is None:
-                    positions = []
-
-                if hasattr(self.window, "trading"):
-
-                    self.window.trading.load_positions(positions)
+                try:
+                    if hasattr(self.window, "trading"):
+                        self.window.trading.load_positions(positions)
+                except Exception:
+                    LOG.exception("Failed to load positions into trading page")
 
             except Exception:
 
-                print("\n" + "=" * 70)
-                print("LIVE UPDATE ERROR")
-                print("=" * 70)
-
-                traceback.print_exc()
-
-                print("=" * 70 + "\n")
+                LOG.exception("LIVE UPDATE ERROR")
 
             time.sleep(2)
 
@@ -86,10 +113,16 @@ class JarvisApp:
 
             self.running = False
 
-            mt5.shutdown()
+            if self.mt5_initialized:
+                try:
+                    mt5.shutdown()
+                except Exception:
+                    LOG.exception("mt5.shutdown() failed")
 
 
 if __name__ == "__main__":
+
+    logging.basicConfig(level=logging.INFO)
 
     app = JarvisApp()
 
